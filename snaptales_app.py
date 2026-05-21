@@ -262,7 +262,7 @@ class SnapTalesApp:
                 command=self.update_result,
             ).pack(side="left", padx=(0, 8))
 
-        crop_frame = ttk.LabelFrame(parent, text="Step 2: Crop (drag to move, corner to resize)")
+        crop_frame = ttk.LabelFrame(parent, text="Crop (drag to move, corner to resize)")
         crop_frame.grid(row=0, column=1, sticky="nsew", padx=(0, 12))
         crop_frame.columnconfigure(0, weight=1)
         crop_frame.rowconfigure(0, weight=1)
@@ -274,7 +274,7 @@ class SnapTalesApp:
         self.crop_canvas.bind("<B1-Motion>", self.on_crop_mouse_drag)
         self.crop_canvas.bind("<ButtonRelease-1>", self.on_crop_mouse_up)
 
-        result_frame = ttk.LabelFrame(parent, text="Step 3-4 Result")
+        result_frame = ttk.LabelFrame(parent, text="Result")
         result_frame.grid(row=0, column=2, sticky="nsew")
         result_frame.columnconfigure(0, weight=1)
         result_frame.rowconfigure(0, weight=1)

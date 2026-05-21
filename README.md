@@ -24,3 +24,8 @@ python snaptales_app.py
 3. Convert to Polaroid ratio and textured border based on Task.md dimensions.
 4. Add text with 7 font choices, 7 preset colors plus custom color, horizontal/vertical alignment.
 5. Preview and save as-is or placed on 10x15 cm / 13x18 cm paper (maximize or original Polaroid size).
+
+## Screenshots
+
+![SnapTales screenshot 1](assets/images/screen1.png)
+![SnapTales screenshot 2](assets/images/screen2.png)
