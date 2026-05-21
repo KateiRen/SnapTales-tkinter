@@ -1,34 +1,46 @@
-# Gradle files
-.gradle/
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Distribution / packaging
 build/
+dist/
+*.egg-info/
+.eggs/
 
-# Local configuration file (sdk path, etc)
-local.properties
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
 
-# Log/OS Files
+# IDE / editor files
+.vscode/
+.idea/
+*.iml
+
+# OS and logs
+.DS_Store
+Thumbs.db
 *.log
 
-# Android Studio generated files and folders
-captures/
-.externalNativeBuild/
-.cxx/
-*.aab
-*.apk
-output-metadata.json
+# Local output artifacts
+output/
+exports/
+snapshots/
 
-# IntelliJ
-*.iml
-.idea/
-misc.xml
-deploymentTargetDropDown.xml
-render.experimental.xml
-
-# Keystore files
-*.jks
-*.keystore
-
-# Google Services (e.g. APIs or Firebase)
-google-services.json
-
-# Android Profiling
-*.hprof
+# Optional font handling
+# Keep custom app fonts tracked by default (recommended for consistent rendering).
+# If you use local-only fonts or cannot commit font binaries, uncomment below:
+# fonts/
+# *.ttf
+# *.otf
