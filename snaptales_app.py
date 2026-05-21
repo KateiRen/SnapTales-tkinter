@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import sys
 import tkinter as tk
 from tkinter import colorchooser, filedialog, messagebox, ttk
 
@@ -59,6 +60,53 @@ def create_border_texture(width: int, height: int) -> Image.Image:
     noise = Image.effect_noise((width, height), 10).convert("L")
     grain = ImageOps.colorize(noise, black="#ebe7df", white="#fffdf8")
     return Image.blend(base, grain, 0.22)
+
+
+def create_app_icon(size: int = 128) -> Image.Image:
+    icon = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(icon)
+
+    card_w = int(size * 0.72)
+    card_h = int(size * 0.80)
+    x0 = (size - card_w) // 2
+    y0 = (size - card_h) // 2
+    x1 = x0 + card_w
+    y1 = y0 + card_h
+
+    side = max(2, int(card_w * (4.5 / 88.0)))
+    top = max(2, int(card_h * (4.5 / 107.0)))
+    bottom = max(5, int(card_h * (23.5 / 107.0)))
+    photo_w = card_w - side * 2
+    photo_h = card_h - top - bottom
+
+    draw.rounded_rectangle((x0, y0, x1, y1), radius=max(4, size // 14), fill=(247, 244, 238, 255))
+    draw.rounded_rectangle(
+        (x0 + side, y0 + top, x0 + side + photo_w, y0 + top + photo_h),
+        radius=max(2, size // 22),
+        fill=(92, 146, 166, 255),
+    )
+    draw.polygon(
+        [
+            (x0 + side + int(photo_w * 0.15), y0 + top + int(photo_h * 0.78)),
+            (x0 + side + int(photo_w * 0.42), y0 + top + int(photo_h * 0.46)),
+            (x0 + side + int(photo_w * 0.62), y0 + top + int(photo_h * 0.68)),
+            (x0 + side + int(photo_w * 0.86), y0 + top + int(photo_h * 0.42)),
+            (x0 + side + int(photo_w * 0.86), y0 + top + int(photo_h * 0.96)),
+            (x0 + side + int(photo_w * 0.15), y0 + top + int(photo_h * 0.96)),
+        ],
+        fill=(52, 94, 117, 255),
+    )
+    draw.ellipse(
+        (
+            x0 + side + int(photo_w * 0.62),
+            y0 + top + int(photo_h * 0.12),
+            x0 + side + int(photo_w * 0.80),
+            y0 + top + int(photo_h * 0.30),
+        ),
+        fill=(255, 239, 178, 255),
+    )
+
+    return icon
 
 
 def place_on_photo_paper(
@@ -123,6 +171,7 @@ class SnapTalesApp:
         self.crop_tk_image: ImageTk.PhotoImage | None = None
         self.result_tk_image: ImageTk.PhotoImage | None = None
         self.export_preview_tk: ImageTk.PhotoImage | None = None
+        self.app_icon_tk: ImageTk.PhotoImage | None = None
         self.thumbnail_tk_images: dict[str, ImageTk.PhotoImage] = {}
         self.export_selection_vars: dict[str, tk.BooleanVar] = {}
 
@@ -142,9 +191,27 @@ class SnapTalesApp:
 
         self.status_var = tk.StringVar(value="Open a photo to begin.")
 
+        self.configure_windows_app_id()
+        self.apply_app_icon()
+
         self.default_save_dir = self.prepare_default_save_folder()
 
         self.build_ui()
+
+    def configure_windows_app_id(self) -> None:
+        if sys.platform != "win32":
+            return
+        try:
+            import ctypes
+
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("KateiRen.SnapTales")
+        except Exception:
+            pass
+
+    def apply_app_icon(self) -> None:
+        icon_image = create_app_icon(128)
+        self.app_icon_tk = ImageTk.PhotoImage(icon_image)
+        self.root.iconphoto(True, self.app_icon_tk)
 
     def prepare_default_save_folder(self) -> Path:
         pictures = Path.home() / "Pictures"
