@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import sys
 import tkinter as tk
-from tkinter import colorchooser, filedialog, messagebox, ttk
+from tkinter import colorchooser, filedialog, font as tkfont, messagebox, ttk
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageTk
 
@@ -41,6 +41,28 @@ PRESET_COLORS = [
     "#1d3557",
     "#2a9d8f",
 ]
+
+# Maps font file names to the Windows/system font family name for the dropdown preview
+_FONT_FILE_TO_FAMILY: dict[str, str] = {
+    "Pacifico-Regular.ttf": "Pacifico",
+    "DancingScript-Regular.ttf": "Dancing Script",
+    "GreatVibes-Regular.ttf": "Great Vibes",
+    "PlayfairDisplay-Regular.ttf": "Playfair Display",
+    "Montserrat-Regular.ttf": "Montserrat",
+    "Raleway-Regular.ttf": "Raleway",
+    "BebasNeue-Regular.ttf": "Bebas Neue",
+    "segoesc.ttf": "Segoe Script",
+    "BRUSHSCI.TTF": "Brush Script MT",
+    "GABRIOLA.TTF": "Gabriola",
+    "georgia.ttf": "Georgia",
+    "times.ttf": "Times New Roman",
+    "arial.ttf": "Arial",
+    "calibri.ttf": "Calibri",
+    "verdana.ttf": "Verdana",
+    "impact.ttf": "Impact",
+    "arialbd.ttf": "Arial",
+    "segoeui.ttf": "Segoe UI",
+}
 
 EXPORT_FILE_SUFFIXES = {
     "as_is": "",
@@ -175,6 +197,8 @@ class SnapTalesApp:
         self.thumbnail_tk_images: dict[str, ImageTk.PhotoImage] = {}
         self.export_selection_vars: dict[str, tk.BooleanVar] = {}
 
+        self._cached_tk_fonts: dict[str, tkfont.Font] = {}
+
         self.crop_canvas: tk.Canvas | None = None
         self.result_canvas: tk.Canvas | None = None
         self.export_preview_canvas: tk.Canvas | None = None
@@ -270,15 +294,13 @@ class SnapTalesApp:
             row=3, column=0, sticky="w"
         )
         font_values = SCRIPT_FONTS + DISPLAY_FONTS
-        font_combo = ttk.Combobox(
-            controls,
-            textvariable=self.font_var,
-            values=font_values,
-            state="readonly",
-            width=24,
-        )
-        font_combo.grid(row=4, column=0, sticky="ew", pady=(4, 10))
-        font_combo.bind("<<ComboboxSelected>>", lambda _event: self.update_result())
+        font_menu_btn = tk.OptionMenu(controls, self.font_var, *font_values)
+        font_menu_btn.configure(width=22, anchor="w")
+        font_menu_btn.grid(row=4, column=0, sticky="ew", pady=(4, 10))
+        menu = font_menu_btn["menu"]
+        for i, font_name in enumerate(font_values):
+            menu.entryconfigure(i, font=self._get_dropdown_tk_font(font_name))
+        self.font_var.trace_add("write", lambda *_: self.update_result())
 
         ttk.Label(controls, text="Colors").grid(row=5, column=0, sticky="w")
         colors_row = ttk.Frame(controls)
@@ -684,6 +706,20 @@ class SnapTalesApp:
         font = self.load_font(self.font_var.get(), 10)
         return font, self._wrap_text(draw, text, font, max_w)
 
+    def _get_dropdown_tk_font(self, font_name: str) -> tkfont.Font:
+        if font_name in self._cached_tk_fonts:
+            return self._cached_tk_fonts[font_name]
+        available = set(tkfont.families())
+        for file_name in FONT_FILE_CANDIDATES.get(font_name, []):
+            family = _FONT_FILE_TO_FAMILY.get(file_name)
+            if family and family in available:
+                result = tkfont.Font(family=family, size=13)
+                self._cached_tk_fonts[font_name] = result
+                return result
+        fallback = tkfont.Font(family="Arial", size=13)
+        self._cached_tk_fonts[font_name] = fallback
+        return fallback
+
     def load_font(self, font_name: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
         fonts_dir = Path(__file__).parent / "fonts"
         win_fonts = Path("C:/Windows/Fonts")
@@ -722,7 +758,7 @@ class SnapTalesApp:
             self.result_canvas.create_text(
                 self.result_canvas.winfo_width() // 2,
                 self.result_canvas.winfo_height() // 2,
-                text="Result appears here after Step 2-4",
+                text="Nothing to show yet.",
                 fill="#555555",
                 font=("Segoe UI", 13),
             )
