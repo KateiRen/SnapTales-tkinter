@@ -263,7 +263,8 @@ class SnapTalesApp:
         ttk.Label(controls, text="Add your caption").grid(row=1, column=0, sticky="w")
         text_entry = ttk.Entry(controls, textvariable=self.text_var, width=26)
         text_entry.grid(row=2, column=0, sticky="ew", pady=(4, 10))
-        text_entry.bind("<KeyRelease>", lambda _event: self.update_result())
+        text_entry.bind("<FocusOut>", lambda _event: self.update_result())
+        text_entry.bind("<Return>", lambda _event: self.update_result())
 
         ttk.Label(controls, text="Choose your style").grid(
             row=3, column=0, sticky="w"
@@ -552,11 +553,10 @@ class SnapTalesApp:
             self.crop_rect = (new_x, new_y, square)
 
         self.refresh_crop_canvas()
-        self.schedule_result_update()
 
     def on_crop_mouse_up(self, _event: tk.Event) -> None:
         self.drag_mode = None
-        self.schedule_result_update(immediate=True)
+        self.update_result()
 
     def schedule_result_update(self, immediate: bool = False) -> None:
         if not self.original_image or not self.crop_rect:
@@ -621,36 +621,68 @@ class SnapTalesApp:
         max_w = max(20, area_w - 2 * pad_x)
         max_h = max(12, area_h - 2 * pad_y)
 
-        font = self.find_best_fit_font(draw, text, max_w, max_h)
-        bbox = draw.textbbox((0, 0), text, font=font)
-        text_w = bbox[2] - bbox[0]
-        text_h = bbox[3] - bbox[1]
+        font, lines = self.find_best_fit_font(draw, text, max_w, max_h)
 
-        if self.h_align_var.get() == "left":
-            text_x = area_x + pad_x
-        elif self.h_align_var.get() == "right":
-            text_x = area_x + area_w - pad_x - text_w
-        else:
-            text_x = area_x + (area_w - text_w) // 2
+        line_bboxes = [draw.textbbox((0, 0), line, font=font) for line in lines]
+        line_heights = [b[3] - b[1] for b in line_bboxes]
+        line_widths = [b[2] - b[0] for b in line_bboxes]
+        single_h = max(line_heights)
+        line_spacing = max(2, single_h // 5)
+        total_h = len(lines) * single_h + (len(lines) - 1) * line_spacing
+        # bbox[1] is the vertical offset of the glyphs relative to the draw point.
+        # Subtracting it aligns the visual block correctly instead of the anchor point.
+        top_offset = min(b[1] for b in line_bboxes)
 
         if self.v_align_var.get() == "top":
-            text_y = area_y + pad_y
+            start_y = area_y + pad_y - top_offset
         elif self.v_align_var.get() == "bottom":
-            text_y = area_y + area_h - pad_y - text_h
+            start_y = area_y + area_h - pad_y - total_h - top_offset
         else:
-            text_y = area_y + (area_h - text_h) // 2
+            start_y = area_y + (area_h - total_h) // 2 - top_offset
 
-        draw.text((text_x, text_y), text, font=font, fill=self.get_active_color())
+        color = self.get_active_color()
+        for i, (line, lw) in enumerate(zip(lines, line_widths)):
+            if self.h_align_var.get() == "left":
+                text_x = area_x + pad_x
+            elif self.h_align_var.get() == "right":
+                text_x = area_x + area_w - pad_x - lw
+            else:
+                text_x = area_x + (area_w - lw) // 2
+            text_y = start_y + i * (single_h + line_spacing)
+            draw.text((text_x, text_y), line, font=font, fill=color)
 
-    def find_best_fit_font(self, draw: ImageDraw.ImageDraw, text: str, max_w: int, max_h: int) -> ImageFont.ImageFont:
+    def _wrap_text(self, draw: ImageDraw.ImageDraw, text: str, font, max_w: int) -> list[str]:
+        words = text.split()
+        lines: list[str] = []
+        current = ""
+        for word in words:
+            candidate = (current + " " + word).strip()
+            w = draw.textbbox((0, 0), candidate, font=font)[2] - draw.textbbox((0, 0), candidate, font=font)[0]
+            if w <= max_w:
+                current = candidate
+            else:
+                if current:
+                    lines.append(current)
+                current = word
+        if current:
+            lines.append(current)
+        return lines if lines else [text]
+
+    def find_best_fit_font(
+        self, draw: ImageDraw.ImageDraw, text: str, max_w: int, max_h: int
+    ) -> tuple[ImageFont.ImageFont, list[str]]:
         for size in range(max_h, 9, -1):
             font = self.load_font(self.font_var.get(), size)
-            bbox = draw.textbbox((0, 0), text, font=font)
-            width = bbox[2] - bbox[0]
-            height = bbox[3] - bbox[1]
-            if width <= max_w and height <= max_h:
-                return font
-        return self.load_font(self.font_var.get(), 10)
+            lines = self._wrap_text(draw, text, font, max_w)
+            line_heights = [draw.textbbox((0, 0), line, font=font)[3] - draw.textbbox((0, 0), line, font=font)[1] for line in lines]
+            line_widths = [draw.textbbox((0, 0), line, font=font)[2] - draw.textbbox((0, 0), line, font=font)[0] for line in lines]
+            single_h = max(line_heights)
+            line_spacing = max(2, single_h // 5)
+            total_h = len(lines) * single_h + (len(lines) - 1) * line_spacing
+            if total_h <= max_h and max(line_widths) <= max_w:
+                return font, lines
+        font = self.load_font(self.font_var.get(), 10)
+        return font, self._wrap_text(draw, text, font, max_w)
 
     def load_font(self, font_name: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
         fonts_dir = Path(__file__).parent / "fonts"
